@@ -1,0 +1,33 @@
+{
+  "name": "bravia-microservice",
+  "version": "1.0.0",
+  "description": "autodomo MQTT microservice to control and get status of Sony Bravia TVs",
+  "main": "index.js",
+  "scripts": {
+    "start": "forever ./index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/autodomo/bravia-microservice.git"
+  },
+  "keywords": [
+    "bravia",
+    "autodomo",
+    "Home",
+    "Automation",
+    "MQTT"
+  ],
+  "author": "Michael Schwartz",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/autodomo/bravia-microservice/issues"
+  },
+  "homepage": "https://github.com/autodomo/bravia-microservice#readme",
+  "dependencies": {
+    "bravia": "^1.2.0",
+    "debug": "^2.6.8",
+    "microservice-core": "github:autodomo/microservice-core",
+    "mqtt": "^2.11.0"
+  }
+}
