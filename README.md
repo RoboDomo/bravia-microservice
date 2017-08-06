@@ -1,5 +1,5 @@
 # bravia-microservice
-MQTT  microservice for Denon AVR
+MQTT  microservice for Sony Bravia TVs
 
 This microservice communicates with Sony Bravia TVs and bridges control and status via MQTT.
 
@@ -19,7 +19,7 @@ To run it:
 ```
 $ docker run \
     -d \
-    -e "DENON_HOSTS=host[,host,host...]" \
+    -e "BRAVIA_HOSTS=host[,host,host...]" \
     --rm \
     --name="bravia-microservice"
     bravia-microservice
