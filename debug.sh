@@ -4,4 +4,4 @@
 docker run \
     --rm \
     --name="bravia-microservice" \
-    autodomo/bravia-microservice
+    robodomo/bravia-microservice
