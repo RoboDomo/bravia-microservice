@@ -27,7 +27,6 @@
   "dependencies": {
     "bravia": "^1.2.0",
     "debug": "^2.6.8",
-    "microservice-core": "github:robodomo/microservice-core",
-    "mqtt": "^2.11.0"
+    "microservice-core": "github:robodomo/microservice-core"
   }
 }
