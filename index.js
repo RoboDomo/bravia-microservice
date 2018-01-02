@@ -3,7 +3,8 @@ process.env.DEBUG='BraviaHost,HostBase'
 const debug    = require('debug')('BraviaHost'),
       Bravia   = require('bravia'),
       HostBase = require('microservice-core/HostBase'),
-      chalk = require('chalk')
+      console  = require('console'),
+      chalk    = require('chalk')
 
 const POLL_TIME = 500
 
@@ -17,6 +18,7 @@ process.on('unhandledRejection', (reason/*, promise*/) => {
   console.log(reason)
   console.log(chalk.red.bold('- -'))
 })
+
 class BraviaHost extends HostBase {
   constructor(host) {
     super(MQTT_HOST, TOPIC_ROOT + '/' + host)
