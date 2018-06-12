@@ -26,7 +26,7 @@
   "homepage": "https://github.com/robodomo/bravia-microservice#readme",
   "dependencies": {
     "bravia": "^1.2.0",
-    "chalk": "^2.3.0",
+    "chalk": "^2.4.1",
     "debug": "^2.6.9",
     "microservice-core": "github:robodomo/microservice-core"
   }
