@@ -25,6 +25,7 @@ class BraviaHost extends HostBase {
     super(MQTT_HOST, TOPIC_ROOT + "/" + host);
     debug("constructor", host);
     this.host = host;
+    this.inputs = {};
     this.bravia = new Bravia(this.host);
     this.poll();
   }
@@ -42,6 +43,18 @@ class BraviaHost extends HostBase {
     };
 
     return state;
+  }
+
+  async launchApplication(title) {
+    title = title.toLowerCase();
+    for (const app of this.state.appsList) {
+      if (app.title.toLowerCase() === title) {
+        await this.bravia.appControl.invoke("setActiveApp", "1.0", {
+          uri: app.uri
+        });
+        return;
+      }
+    }
   }
 
   async getCodes() {
@@ -126,6 +139,14 @@ class BraviaHost extends HostBase {
     while (1) {
       try {
         await this.getCodes();
+        //        console.log("---");
+        //        for (const code of this.codes) {
+        //          console.log("code: ", code.name);
+        //        }
+        //        console.log("---");
+        this.state = {
+          codes: this.codes
+        };
       } catch (e) {
         debug(this.device, "getCodes exception", e);
       }
@@ -157,8 +178,9 @@ class BraviaHost extends HostBase {
 
       try {
         const inputs = await this.getInputStatus();
+        this.inputs = Object.assign(this.inputs, inputs);
         this.state = {
-          inputs: inputs
+          inputs: this.inputs
         };
       } catch (e) {
         debug(this.device, "poll exception", e);
@@ -192,15 +214,16 @@ class BraviaHost extends HostBase {
   async command(topic, command) {
     debug("command", command);
     if (command.startsWith("LAUNCH-")) {
-      await this.bravia.appControl.invoke("setActiveApp", "1.0", {
-        uri: command.substr(7)
-      });
-      debug(
-        this.device,
-        "getPlayingContentInfo",
-        await this.bravia.avContent.invoke("getPlayingContentInfo", "1.0")
-      );
-      Promise.resolve();
+      await this.launchApplication(command.substr(7));
+      //      await this.bravia.appControl.invoke("setActiveApp", "1.0", {
+      //        uri: command.substr(7)
+      //      });
+      //      debug(
+      //        this.device,
+      //        "getPlayingContentInfo",
+      //        await this.bravia.avContent.invoke("getPlayingContentInfo", "1.0")
+      //      );
+      //      Promise.resolve();
     }
     return this.bravia.send(command);
   }
