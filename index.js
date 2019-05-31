@@ -62,11 +62,11 @@ class BraviaHost extends HostBase {
       try {
         this.codes = await this.bravia.getIRCCCodes();
         //        this.codes.forEach(code => {
-        //          debug(this.device, code);
+        //          debug(this.host, code);
         //        });
       } catch (e) {
         if (this.state && this.state.power) {
-          debug(this.device, "getCodes exception1", e);
+          debug(this.host, "getCodes exception1", e);
         }
       }
     }
@@ -75,7 +75,7 @@ class BraviaHost extends HostBase {
         this.apps = await this.getApplicationList();
       } catch (e) {
         if (this.state && this.state.power) {
-          debug(this.device, "getCodes exception2", e);
+          debug(this.host, "getCodes exception2", e);
         }
       }
     }
@@ -91,7 +91,7 @@ class BraviaHost extends HostBase {
       }
     } catch (e) {
       if (this.state && this.state.power) {
-        debug(this.device, "getVolume exception", e);
+        debug(this.host, "getVolume exception", e);
       }
     }
     return state;
@@ -102,7 +102,7 @@ class BraviaHost extends HostBase {
       var state = await this.bravia.system.invoke("getPowerStatus");
       return state;
     } catch (e) {
-      debug(this.device, "getPowerStatus exception", e);
+      debug(this.host, "getPowerStatus exception", e);
       return false;
     }
   }
@@ -114,7 +114,7 @@ class BraviaHost extends HostBase {
       );
       return state;
     } catch (e) {
-      debug(this.device, "getInputStatus  exception", e);
+      debug(this.host, "getInputStatus  exception", e);
       return false;
     }
   }
@@ -123,11 +123,9 @@ class BraviaHost extends HostBase {
     //    console.log("getPlayingContentInfo");
     try {
       var state = await this.bravia.avContent.invoke("getPlayingContentInfo");
-      console.log("GOT STATE");
-      console.log("state", state);
       return state;
     } catch (e) {
-      debug(this.device, "getPlayingContentInfo  exception", e);
+      debug(this.host, "getPlayingContentInfo  exception", e);
       return false;
     }
   }
@@ -135,7 +133,7 @@ class BraviaHost extends HostBase {
   async poll() {
     let lastVolume = null;
 
-    debug(this.device, "poll");
+    debug(this.host, "poll");
     while (1) {
       try {
         await this.getCodes();
@@ -148,7 +146,7 @@ class BraviaHost extends HostBase {
           codes: this.codes
         };
       } catch (e) {
-        debug(this.device, "getCodes exception", e);
+        debug(this.host, "getCodes exception", e);
       }
 
       try {
@@ -157,7 +155,7 @@ class BraviaHost extends HostBase {
           power: state.status === "active"
         };
       } catch (e) {
-        debug(this.device, "poll exception", e);
+        debug(this.host, "poll exception", e);
       }
 
       try {
@@ -172,19 +170,19 @@ class BraviaHost extends HostBase {
         }
       } catch (e) {
         if (this.state && this.state.power) {
-          debug(this.device, "poll getVolume exception", e);
+          debug(this.host, "poll getVolume exception", e);
         }
       }
 
-      try {
-        const inputs = await this.getInputStatus();
-        this.inputs = Object.assign(this.inputs, inputs);
-        this.state = {
-          inputs: this.inputs
-        };
-      } catch (e) {
-        debug(this.device, "poll exception", e);
-      }
+      //      try {
+      //        const inputs = await this.getInputStatus();
+      //        this.inputs = Object.assign(this.inputs, inputs);
+      //        this.state = {
+      //          inputs: this.inputs
+      //        };
+      //      } catch (e) {
+      //        debug(this.host, "poll exception", e);
+      //      }
 
       try {
         if (!this.state.power) {
@@ -204,7 +202,7 @@ class BraviaHost extends HostBase {
           };
         }
       } catch (e) {
-        debug(this.device, "poll exception", e);
+        debug(this.host, "poll exception", e);
       }
 
       await this.wait(POLL_TIME);
@@ -219,12 +217,13 @@ class BraviaHost extends HostBase {
       //        uri: command.substr(7)
       //      });
       //      debug(
-      //        this.device,
+      //        this.host,
       //        "getPlayingContentInfo",
       //        await this.bravia.avContent.invoke("getPlayingContentInfo", "1.0")
       //      );
       //      Promise.resolve();
     }
+    console.log("bravia send", this.host, command);
     return this.bravia.send(command);
   }
 }
