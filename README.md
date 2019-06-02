@@ -3,6 +3,9 @@ MQTT  microservice for Sony Bravia TVs
 
 This microservice communicates with Sony Bravia TVs and bridges control and status via MQTT.
 
+### Documentation for Bravia API
+https://pro-bravia.sony.net/develop/index.html
+
 ## Docker build instructions
 You can neatly package this microservice as a Docker container:
 
