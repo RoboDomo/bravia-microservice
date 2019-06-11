@@ -1,5 +1,6 @@
 //process.env.DEBUG = ""; // BraviaHost,HostBase";
 process.env.DEBUG = "BraviaHost,HostBase";
+process.title = process.env.TITLE || "bravia-microservice";
 
 const debug = require("debug")("BraviaHost"),
   Bravia = require("bravia"),
