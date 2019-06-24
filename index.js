@@ -134,10 +134,14 @@ class BraviaHost extends HostBase {
   async poll() {
     let lastVolume = null;
 
-    debug(this.host, "poll");
+    //    debug(this.host, "poll");
     while (1) {
       try {
         await this.getCodes();
+        this.codesMap = {};
+        for (const code of this.codes) {
+          this.codesMap[code.name.toLowerCase()] = code.name;
+        }
         //        console.log("---");
         //        for (const code of this.codes) {
         //          console.log("code: ", code.name);
@@ -224,8 +228,13 @@ class BraviaHost extends HostBase {
       //      );
       //      Promise.resolve();
     }
-    console.log("bravia send", this.host, command);
-    return this.bravia.send(command);
+    const cmd = this.codesMap[command.toLowerCase()];
+    if (cmd) {
+      console.log("bravia send", this.host, cmd);
+      return this.bravia.send(cmd);
+    } else {
+      console.log(this.host, "invalid command", command);
+    }
   }
 }
 
