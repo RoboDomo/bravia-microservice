@@ -62,6 +62,12 @@ class BraviaHost extends HostBase {
     if (!this.codes) {
       try {
         this.codes = await this.bravia.getIRCCCodes();
+        this.codesMap = {};
+        for (const code of this.codes) {
+          this.codesMap[code.name.toLowerCase()] = code.name;
+          // aliases
+          this.codesMap["poweron"] = "WakeUp";
+        }
         //        this.codes.forEach(code => {
         //          debug(this.host, code);
         //        });
@@ -138,10 +144,6 @@ class BraviaHost extends HostBase {
     while (1) {
       try {
         await this.getCodes();
-        this.codesMap = {};
-        for (const code of this.codes) {
-          this.codesMap[code.name.toLowerCase()] = code.name;
-        }
         //        console.log("---");
         //        for (const code of this.codes) {
         //          console.log("code: ", code.name);
