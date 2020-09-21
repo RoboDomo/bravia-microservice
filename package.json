@@ -4,7 +4,7 @@
   "description": "robodomo MQTT microservice to control and get status of Sony Bravia TVs",
   "main": "index.js",
   "scripts": {
-    "start": "forever ./index.js",
+    "start": "./entrypoint.sh",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -25,9 +25,11 @@
   },
   "homepage": "https://github.com/robodomo/bravia-microservice#readme",
   "dependencies": {
-    "bravia": "^1.2.0",
-    "chalk": "^2.4.1",
+    "bravia": "^1.3.3",
+    "chalk": "^2.4.2",
     "debug": "^2.6.9",
-    "microservice-core": "github:robodomo/microservice-core"
+    "microservice-core": "github:robodomo/microservice-core",
+    "nodemon": "^2.0.4",
+    "superagent": "^6.1.0"
   }
 }
