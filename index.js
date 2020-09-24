@@ -122,7 +122,7 @@ class BraviaHost extends HostBase {
       var state = await this.bravia.avContent.invoke(
         "getCurrentExternalInputsStatus"
       );
-      console.log("inputStaus", state);
+      // console.log("inputStaus", state);
       return state;
     } catch (e) {
       debug(this.host, "getInputStatus  exception", e);
@@ -161,7 +161,7 @@ class BraviaHost extends HostBase {
 //      };
     }
     else {
-      console.log(ret.result[0].title);
+      // console.log(ret.result[0].title);
       this.state = {
         input: ret.result[0].title.replace(/\/.*$/, '')
       };
