@@ -1,0 +1,118 @@
+<!--
+ Copyright 2014-2015 Sony Corporation. All rights reserved.
+-->
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Display Control Sample</title>
+
+<script>
+function send(service, method, params) {
+  var ip = document.getElementById("ip").value;
+  var psk = document.getElementById("psk").value;
+  var xhr = new XMLHttpRequest();
+  xhr.onload = function() {
+    var resp = xhr.responseText;
+    log('-- ' + service + '.' + method + '(' + (params ? JSON.stringify(params) : '') + ') --'
+    + '\nstatus: ' + xhr.status
+    + '\n' + JSON.stringify(JSON.parse(xhr.response), null, '  '))
+  };
+  xhr.open('POST', 'http://' + ip + '/sony/' + service);
+  if (psk) {
+    xhr.setRequestHeader('X-Auth-PSK', psk);
+  }
+
+  xhr.send(JSON.stringify({
+    method: method,
+    version: '1.0',
+    id: 1,
+    params: params ? [params] : [],
+  }));
+}
+function power(status) {
+  send('system', 'setPowerStatus', {status: status});
+}
+function extInput() {
+  var kind = document.getElementById("kind").value;
+  var port = document.getElementById("port").value;
+  var uri = 'extInput:' + kind + '?port=' + port;
+  send('avContent', 'setPlayContent', {uri: uri});
+}
+function app(url) {
+  var apptype = document.getElementById("apptype").value;
+  var url = document.getElementById("url").value;
+  var uri = 'localapp://webappruntime?' + apptype + '=' + url;
+  send('appControl', 'setActiveApp', {uri: uri, data:''});
+}
+function mute(on) {
+  send('audio', 'setAudioMute', {status:on});
+}
+function volume(val) {
+  send('audio', 'setAudioVolume', {target:'speaker', volume:val});
+}
+function getWebAppStatus() {
+  send('appControl', 'getWebAppStatus', null);
+}
+function terminateApps() {
+  send('appControl', 'terminateApps', null);
+}
+function log(text) {
+  var log = document.getElementById("log");
+  log.innerHTML = text + '\n' + log.innerHTML;
+}
+function empty() {
+  document.getElementById("log").innerHTML = '';
+}
+</script>
+
+<div>
+  Display IP:<input type="text" id="ip"></ip>
+  <br/>
+  PSK:<input type="text" id="psk"></ip>
+</div>
+<div>
+  Power:
+  <button onclick="power(true)">ON</button>
+  <button onclick="power(false)">OFF</button>
+</div>
+<div>
+  Volume:
+  <button onclick="volume('+1')">+1</button>
+  <button onclick="volume('-1')">-1</button>
+  <button onclick="mute(true)">Mute</button>
+  <button onclick="mute(false)">Unmute</button>
+  <input id="volume" type="text" size="3" value="10"/>
+  <button onclick="volume(document.getElementById('volume').value)">Set</button><small>(0 - 100)</small>
+</div>
+<div>
+  Input:
+  <select id="kind">
+    <option value="hdmi">HDMI</option>
+    <option value="composite">Composite</option>
+    <option value="scart">SCART</option>
+  </select>
+  <select id="port">
+    <option value="1">1</option>
+    <option value="2">2</option>
+    <option value="3">3</option>
+    <option value="4">4</option>
+  </select>
+  <button onclick="extInput()">Go</button>
+</div>
+<div>
+  URL:
+  <input id="url" type="text" size="50"/>
+  <select id="apptype">
+    <option value="url">HTML URL</option>
+    <option value="manifest">Manifest URL</option>
+  </select>
+  <button onclick="app()">Go</button>
+</div>
+<div>
+  App:
+  <button onclick="getWebAppStatus()">Web App Status</button>
+  <button onclick="terminateApps()">Terminate Apps</button>
+</div>
+<div>
+  Result <button onclick="empty()">Clear</button><br/>
+  <textarea id="log" readonly rows="15" cols="80"></textarea>
+</div>

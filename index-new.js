@@ -20,35 +20,186 @@ const request = require("superagent");
 class BraviaHost extends HostBase {
   constructor(host) {
     super(MQTT_HOST, TOPIC_ROOT + "/" + host);
+
     this.baseUrl = `http://${host}/sony/`;
     debug("BraviaHost", host, this.baseUrl);
     this.host = host;
+    this.codes = null;
 
     this.poll();
   }
 
-  async post(service, method, params) {
+   post = async (service, method, params) => {
     params = params || [];
-    const url = this.baseUrl + service;
-    const o = {method: method, params: params, id: 1, version: "1.0"};
-    console.log("post", service, url, o);
+    const url = this.baseUrl + service,
+       o = {method: method, params: params, id: 1, version: "1.0"};
+
     const res = await request
       .post(url)
       .set("ContentType", "application/json; charset=UFT-8")
       .set("X-Auth-PSK", "0000")
       .send(o);
-    return res;
+
+    return JSON.parse(res.text);
   }
+
+  sendIrcc = async (code) => {
+
+    let body = `
+<?xml version="1.0"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+    <s:Body>
+        <u:X_SendIRCC xmlns:u="urn:schemas-sony-com:service:IRCC:1">
+            <IRCCCode>${code}</IRCCCode>
+        </u:X_SendIRCC>
+    </s:Body>
+</s:Envelope>`;
+
+
+    request.serialize['text/xml'] = (obj) => {
+      console.log('serialize', obj);
+    };
+    const url = this.baseUrl + 'ircc';;
+    console.log(url);
+    console.log(body);
+    try {
+      const res = await request
+          .post(url)
+          .set('Content-Type', 'text/xml')
+          .set('SOAPACTION', '"urn:schemas-sony-com:service:IRCC:1#X_SendIRCC"')
+          .set("X-Auth-PSK", "0000")
+          .send(body)
+//        .end()
+
+      console.log(res);
+    }
+    catch (e) {
+      console.log(e.message);
+    }
+  };
+
+  pollApplications = async () => {
+    if (!this.applications || !this.appsMap) {
+      const ret = await this.post('appControl', 'getApplicationList');
+      this.applications = ret.result[0];
+
+      this.appsMap = {};
+      for (const app of this.applications) {
+        this.appsMap[app.title] = app;
+      }
+
+      this.state = {
+        appsMap: this.appsMap,
+        appsList: this.applications,
+      };
+    }
+  };
+
+  pollCodes = async () => {
+    if (!this.codes) {
+      const ret = await this.post('system', 'getRemoteControllerInfo');
+      this.codes = ret.result[1];
+      this.codesMap = {};
+      for (const code of this.codes) {
+        this.codesMap[code.name.toLowerCase()] = code.value;
+      }
+      // aliases
+      this.codesMap["poweron"] = "WakeUp";
+    }
+  };
+
+  pollVolume = async () => {
+    const ret = await this.post('audio', 'getVolumeInformation'),
+      state = {};
+
+    if (ret.result) {
+      let volume;
+      for (let vol of ret.result) {
+        volume = vol
+        break;
+      }
+
+      try {
+        for (let vol of volume) {
+          state[vol.target] = vol;
+        }
+      } catch (e) {
+        if (this.state && this.state.power) {
+          debug(this.host, "getVolume exception", e);
+        }
+      }
+      this.state = {
+        volume: state.speaker.volume,
+        mute: state.speaker.mute,
+      };
+    }
+  };
+
+  launchApplication = async (title) => {
+    title = title.toLowerCase();
+    for (const app of this.state.appsList) {
+      if (app.title.toLowerCase() === title) {
+        await poll('appControl', 'setActiveApp', [{ uri: app.uri }]);
+//        await this.bravia.appControl.invoke("setActiveApp", "1.0", {
+//          uri: app.uri
+//        });
+        return;
+      }
+    }
+  };
+
+   command = async (topic, command) => {
+    debug("command", command);
+    if (command.startsWith("LAUNCH-")) {
+      await this.launchApplication(command.substr(7));
+      return;
+    }
+    const cmd = this.codesMap[command.toLowerCase()];
+    if (cmd) {
+      console.log("bravia send", this.host, cmd);
+      return this.sendIrcc(cmd);
+    } else {
+      console.log(this.host, "invalid command", command);
+    }
+  };
+
+  pollInput = async () => {
+    const ret = await this.post("avContent", "getPlayingContentInfo");
+    if (ret.error) {
+      this.state = {
+        power: false,
+        input: "none"
+      };
+    }
+    else {
+      this.state = {
+        input: ret.result[0].title.replace(/\/.*$/, '')
+      };
+    }
+  }
+
+   pollPower = async () => {
+    const ret = await this.post('system', 'getPowerStatus'),
+       power = ret.result[0].status === 'active';
+     this.state = {
+       power: power
+     };
+  };
+
 
   async poll() {
     console.log("poll");
-    try {
-//      const ret = await this.post("system", "requestReboot");
-      const ret = await this.post("avContent", "getPlayingContentInfo");
-      console.log(this.host, "ret", ret.text);
-    }
-    catch (e) {
-      console.log("poll exception", e.stack)
+    for (;;) {
+      try {
+        await this.pollCodes();
+        await this.pollApplications();
+        await this.pollInput();
+        await this.pollPower();
+        await this.pollVolume();
+        await this.wait(POLL_TIME * 10);
+      } catch (e) {
+        console.log(this.host, "poll exception", e.message);
+      }
     }
   }
 }
