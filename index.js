@@ -43,7 +43,7 @@ class BraviaHost extends HostBase {
     }
     this.state = {
       appsMap: state,
-      appsList: list
+      appsList: list,
     };
 
     return state;
@@ -54,7 +54,7 @@ class BraviaHost extends HostBase {
     for (const app of this.state.appsList) {
       if (app.title.toLowerCase() === title) {
         await this.bravia.appControl.invoke("setActiveApp", "1.0", {
-          uri: app.uri
+          uri: app.uri,
         });
         return;
       }
@@ -122,7 +122,7 @@ class BraviaHost extends HostBase {
       var state = await this.bravia.avContent.invoke(
         "getCurrentExternalInputsStatus"
       );
-      console.log("inputStaus", state);
+      // console.log("inputStaus", state);
       return state;
     } catch (e) {
       // debug(this.host, "getInputStatus  exception", e);
@@ -131,10 +131,10 @@ class BraviaHost extends HostBase {
     }
   }
 
-  post = async (service, method, params) => {
+  async post(service, method, params) {
     params = params || [];
     const url = this.baseUrl + service,
-          o = {method: method, params: params, id: 1, version: "1.0"};
+      o = { method: method, params: params, id: 1, version: "1.0" };
 
     const res = await request
           .post(url)
@@ -145,15 +145,15 @@ class BraviaHost extends HostBase {
     return JSON.parse(res.text);
   }
 
-  pollPower = async () => {
-    const ret = await this.post('system', 'getPowerStatus'),
-          power = ret.result[0].status === 'active';
+  async pollPower() {
+    const ret = await this.post("system", "getPowerStatus"),
+      power = ret.result[0].status === "active";
     this.state = {
-      power: power
+      power: power,
     };
-  };
+  }
 
-  pollInput = async () => {
+  async pollInput() {
     const ret = await this.post("avContent", "getPlayingContentInfo");
     if (ret.error) {
          // console.log(this.host, "ret", ret);
@@ -163,8 +163,15 @@ class BraviaHost extends HostBase {
     }
     else {
       console.log(ret.result[0].title);
+      this.state = { input: "HDMI 1" };
+      //    console.log(this.host, "ret", ret);
+      //      this.state = {
+      //        input: "none"
+      //      };
+    } else {
+      // console.log(ret.result[0].title);
       this.state = {
-        input: ret.result[0].title.replace(/\/.*$/, '')
+        input: ret.result[0].title.replace(/\/.*$/, ""),
       };
     }
   }
@@ -193,7 +200,7 @@ class BraviaHost extends HostBase {
         //        }
         //        console.log("---");
         this.state = {
-          codes: this.codes
+          codes: this.codes,
         };
       } catch (e) {
         debug(this.host, "getCodes exception", e);
@@ -215,7 +222,7 @@ class BraviaHost extends HostBase {
 
         if (lastVolume !== encoded) {
           this.state = {
-            volume: await this.getVolume()
+            volume: await this.getVolume(),
           };
           lastVolume = encoded;
         }
@@ -238,7 +245,7 @@ class BraviaHost extends HostBase {
       try {
         if (!this.state.power) {
           this.state = {
-            input: "Off"
+            input: "Off",
           };
         } else {
           await this.pollInput();
@@ -288,18 +295,18 @@ class BraviaHost extends HostBase {
     if (cmd) {
       console.log("bravia send", this.host, cmd);
       switch (cmd.toUpperCase().replace(" ", "")) {
-      case "HDMI1":
-        this.state = { input: "HDMI 1"};
-        break;
-      case "HDMI2":
-        this.state = { input: "HDMI 1"};
-        break;
-      case "HDMI3":
-        this.state = { input: "HDMI 3"};
-        break;
-      case "HDMI4":
-        this.state = { input: "HDMI 3"};
-        break;
+        case "HDMI1":
+          this.state = { input: "HDMI 1" };
+          break;
+        case "HDMI2":
+          this.state = { input: "HDMI 2" };
+          break;
+        case "HDMI3":
+          this.state = { input: "HDMI 3" };
+          break;
+        case "HDMI4":
+          this.state = { input: "HDMI 4" };
+          break;
       }
       return this.bravia.send(cmd);
     } else {
@@ -319,7 +326,7 @@ function main() {
     console.log("ENV variable BRAVIA_HOSTS not found");
     process.exit(1);
   }
-  BRAVIA_HOSTS.forEach(host => {
+  BRAVIA_HOSTS.forEach((host) => {
     tvs[host] = new BraviaHost(host);
   });
 }
