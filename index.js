@@ -1,20 +1,20 @@
 //process.env.DEBUG = ""; // BraviaHost,HostBase";
-process.env.DEBUG = "BraviaHost,HostBase";
+process.env.DEBUG = "BraviaHost";
 process.title = process.env.TITLE || "bravia-microservice";
 
 const debug = require("debug")("BraviaHost"),
-      Bravia = require("bravia"),
-      HostBase = require("microservice-core/HostBase"),
-      console = require("console"),
-      chalk = require("chalk");
+  Bravia = require("bravia"),
+  HostBase = require("microservice-core/HostBase"),
+  console = require("console"),
+  chalk = require("chalk");
 
 const request = require("superagent");
 
 const POLL_TIME = 500;
 
 const TOPIC_ROOT = process.env.TOPIC_ROOT || "bravia",
-      MQTT_HOST = process.env.MQTT_HOST,
-      BRAVIA_HOSTS = process.env.BRAVIA_HOSTS.split(",");
+  MQTT_HOST = process.env.MQTT_HOST,
+  BRAVIA_HOSTS = process.env.BRAVIA_HOSTS.split(",");
 
 process.on("unhandledRejection", (reason /*, promise*/) => {
   console.log(chalk.red.bold("[PROCESS] Unhandled Promise Rejection"));
@@ -29,6 +29,7 @@ class BraviaHost extends HostBase {
     debug("constructor", host);
     this.host = host;
     this.inputs = {};
+    this.commandQueue = [];
     this.baseUrl = `http://${host}/sony/`;
     this.bravia = new Bravia(this.host);
     this.poll();
@@ -36,7 +37,7 @@ class BraviaHost extends HostBase {
 
   async getApplicationList() {
     const list = await this.bravia.appControl.invoke("getApplicationList"),
-          state = {};
+      state = {};
 
     for (let app of list) {
       state[app.title] = app;
@@ -63,21 +64,22 @@ class BraviaHost extends HostBase {
 
   async getCodes() {
     if (!this.codes) {
+      this.codesMap = {};
       try {
         this.codes = await this.bravia.getIRCCCodes();
-        this.codesMap = {};
         for (const code of this.codes) {
-          this.codesMap[code.name.toLowerCase()] = code.name;
+          this.codesMap[code.name.toUpperCase()] = code.name;
           // aliases
-          this.codesMap["poweron"] = "WakeUp";
+          this.codesMap["POWERON"] = "WakeUp";
         }
         //        this.codes.forEach(code => {
         //          debug(this.host, code);
         //        });
       } catch (e) {
-        if (this.state && this.state.power) {
-          debug(this.host, "getCodes exception1", e);
-        }
+        //        if (this.state && this.state.power) {
+        debug(this.host, "getCodes exception1", e);
+        this.state = { power: false, input: "OFF" };
+        //        }
       }
     }
     if (!this.apps) {
@@ -93,7 +95,7 @@ class BraviaHost extends HostBase {
 
   async getVolume() {
     const volume = await this.bravia.audio.invoke("getVolumeInformation"),
-          state = {};
+      state = {};
 
     try {
       for (let vol of volume) {
@@ -126,7 +128,7 @@ class BraviaHost extends HostBase {
       return state;
     } catch (e) {
       // debug(this.host, "getInputStatus  exception", e);
-      this.state = { input: "HDMI 1"};
+      this.state = { input: "HDMI 1" };
       return false;
     }
   }
@@ -137,10 +139,10 @@ class BraviaHost extends HostBase {
       o = { method: method, params: params, id: 1, version: "1.0" };
 
     const res = await request
-          .post(url)
-          .set("ContentType", "application/json; charset=UFT-8")
-          .set("X-Auth-PSK", "0000")
-          .send(o);
+      .post(url)
+      .set("ContentType", "application/json; charset=UFT-8")
+      .set("X-Auth-PSK", "0000")
+      .send(o);
 
     return JSON.parse(res.text);
   }
@@ -156,13 +158,6 @@ class BraviaHost extends HostBase {
   async pollInput() {
     const ret = await this.post("avContent", "getPlayingContentInfo");
     if (ret.error) {
-         // console.log(this.host, "ret", ret);
-           this.state = {
-             input: "HDMI 1"
-           };
-    }
-    else {
-      console.log(ret.result[0].title);
       this.state = { input: "HDMI 1" };
       //    console.log(this.host, "ret", ret);
       //      this.state = {
@@ -218,7 +213,7 @@ class BraviaHost extends HostBase {
 
       try {
         const newVolume = await this.getVolume(),
-              encoded = JSON.stringify(newVolume);
+          encoded = JSON.stringify(newVolume);
 
         if (lastVolume !== encoded) {
           this.state = {
@@ -277,6 +272,24 @@ class BraviaHost extends HostBase {
     }
   }
 
+  async commandRunner() {
+    let timer = setInterval(() => {
+      if (this.codesMap.POWERON) {
+        const command = this.commandQueue.shift();
+        if (command) {
+          const cmd = this.codesMap[command.toUpperCase()];
+          if (cmd) {
+            console.log("bravia send", this.host, cmd);
+            this.bravia.send(cmd);
+          }
+        } else {
+          clearInterval(timer);
+          timer = null;
+        }
+      }
+    }, 500);
+  }
+
   async command(topic, command) {
     debug("command", command);
     if (command.startsWith("LAUNCH-")) {
@@ -291,24 +304,35 @@ class BraviaHost extends HostBase {
       //      );
       //      Promise.resolve();
     }
-    const cmd = this.codesMap[command.toLowerCase()];
+    command = command.toUpperCase();
+    if (command === "POWERON") {
+      this.commandQueue.push("WakeUp");
+      this.commandRunner();
+      //      this.bravia.send("WakeUp");
+      return;
+    }
+    const cmd = this.codesMap[command.toUpperCase()];
     if (cmd) {
-      console.log("bravia send", this.host, cmd);
       switch (cmd.toUpperCase().replace(" ", "")) {
         case "HDMI1":
           this.state = { input: "HDMI 1" };
           break;
         case "HDMI2":
-          this.state = { input: "HDMI 2" };
+          this.state = { input: "HDMI 1" };
           break;
         case "HDMI3":
           this.state = { input: "HDMI 3" };
           break;
         case "HDMI4":
-          this.state = { input: "HDMI 4" };
+          this.state = { input: "HDMI 3" };
           break;
       }
-      return this.bravia.send(cmd);
+      this.commandQueue.push(cmd);
+      if (this.commandQueue.length < 2) {
+        this.commandRunner();
+      }
+
+      //      return this.bravia.send(cmd);
     } else {
       console.log(this.host, "invalid command", command);
     }
