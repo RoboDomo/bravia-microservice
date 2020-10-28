@@ -28,8 +28,12 @@
     "bravia": "^1.3.3",
     "chalk": "^2.4.2",
     "debug": "^2.6.9",
+    "localStorage": "^1.0.4",
+    "localstorage": "^1.0.1",
     "microservice-core": "github:robodomo/microservice-core",
+    "node-localstorage": "^2.1.6",
     "nodemon": "^2.0.4",
-    "superagent": "^6.1.0"
+    "superagent": "^6.1.0",
+    "websocket": "^1.0.32"
   }
 }
