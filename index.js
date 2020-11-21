@@ -1,5 +1,5 @@
 //process.env.DEBUG = ""; // BraviaHost,HostBase";
-process.env.DEBUG = "BraviaHost";
+process.env.DEBUG = "BraviaHost,HostBase";
 process.title = process.env.TITLE || "bravia-microservice";
 
 const debug = require("debug")("BraviaHost"),
@@ -44,7 +44,7 @@ class BraviaHost extends HostBase {
     }
     this.state = {
       appsMap: state,
-      appsList: list,
+      appsList: list
     };
 
     return state;
@@ -55,7 +55,7 @@ class BraviaHost extends HostBase {
     for (const app of this.state.appsList) {
       if (app.title.toLowerCase() === title) {
         await this.bravia.appControl.invoke("setActiveApp", "1.0", {
-          uri: app.uri,
+          uri: app.uri
         });
         return;
       }
@@ -82,6 +82,7 @@ class BraviaHost extends HostBase {
         //        }
       }
     }
+
     if (!this.apps) {
       try {
         this.apps = await this.getApplicationList();
@@ -109,34 +110,15 @@ class BraviaHost extends HostBase {
     return state;
   }
 
-  async getPowerStatus() {
-    try {
-      var state = await this.bravia.system.invoke("getPowerStatus");
-      return state;
-    } catch (e) {
-      debug(this.host, "getPowerStatus exception", e);
-      return false;
-    }
-  }
-
-  async getInputStatus() {
-    try {
-      var state = await this.bravia.avContent.invoke(
-        "getCurrentExternalInputsStatus"
-      );
-      // console.log("inputStaus", state);
-      return state;
-    } catch (e) {
-      // debug(this.host, "getInputStatus  exception", e);
-      this.state = { input: "HDMI 1" };
-      return false;
-    }
-  }
-
   async post(service, method, params) {
     params = params || [];
     const url = this.baseUrl + service,
-      o = { method: method, params: params, id: 1, version: "1.0" };
+      o = {
+        method: method,
+        params: params,
+        id: 1,
+        version: method.indexOf("SoundSettings") === -1 ? "1.0" : "1.1"
+      };
 
     const res = await request
       .post(url)
@@ -151,7 +133,7 @@ class BraviaHost extends HostBase {
     const ret = await this.post("system", "getPowerStatus"),
       power = ret.result[0].status === "active";
     this.state = {
-      power: power,
+      power: power
     };
   }
 
@@ -159,20 +141,14 @@ class BraviaHost extends HostBase {
     const ret = await this.post("avContent", "getPlayingContentInfo");
     if (ret.error) {
       this.state = { input: "HDMI 1" };
-      //    console.log(this.host, "ret", ret);
-      //      this.state = {
-      //        input: "none"
-      //      };
     } else {
-      // console.log(ret.result[0].title);
       this.state = {
-        input: ret.result[0].title.replace(/\/.*$/, ""),
+        input: ret.result[0].title.replace(/\/.*$/, "")
       };
     }
   }
 
   async getPlayingContentInfo() {
-    //    console.log("getPlayingContentInfo");
     try {
       var state = await this.bravia.avContent.invoke("getPlayingContentInfo");
       return state;
@@ -182,34 +158,39 @@ class BraviaHost extends HostBase {
     }
   }
 
+  async pollSpeakers() {
+    try {
+      const ret = await this.bravia.audio.invoke("getSoundSettings", "1.1", {}),
+        result = ret[0];
+
+      if (!result.currentValue) {
+        return;
+      }
+      this.state = { speakers: result.currentValue };
+    } catch (e) {
+      debug(this.host, "pollSpeakers  exception", e);
+    }
+  }
+
   async poll() {
     let lastVolume = null;
 
-    //    debug(this.host, "poll");
     while (1) {
       try {
+        await this.pollSpeakers();
+      } catch (e) {
+        debug(this.host, "pollSpeakers exception", e);
+      }
+      try {
         await this.getCodes();
-        //        console.log("---");
-        //        for (const code of this.codes) {
-        //          console.log("code: ", code.name);
-        //        }
-        //        console.log("---");
         this.state = {
-          codes: this.codes,
+          codes: this.codes
         };
       } catch (e) {
         debug(this.host, "getCodes exception", e);
       }
 
       await this.pollPower();
-      //      try {
-      //        const state = await this.getPowerStatus();
-      //        this.state = {
-      //          power: state.status === "active"
-      //        };
-      //      } catch (e) {
-      //        debug(this.host, "poll exception", e);
-      //      }
 
       try {
         const newVolume = await this.getVolume(),
@@ -217,7 +198,7 @@ class BraviaHost extends HostBase {
 
         if (lastVolume !== encoded) {
           this.state = {
-            volume: await this.getVolume(),
+            volume: newVolume // await this.getVolume()
           };
           lastVolume = encoded;
         }
@@ -227,42 +208,13 @@ class BraviaHost extends HostBase {
         }
       }
 
-      //      try {
-      //        const inputs = await this.getInputStatus();
-      //        this.inputs = Object.assign(this.inputs, inputs);
-      //        this.state = {
-      //          inputs: this.inputs
-      //        };
-      //      } catch (e) {
-      //        debug(this.host, "poll exception", e);
-      //      }
-
       try {
         if (!this.state.power) {
           this.state = {
-            input: "Off",
+            input: "Off"
           };
         } else {
           await this.pollInput();
-          /*
-            try {
-            const nowPlaying = await this.getPlayingContentInfo();
-            let input = nowPlaying.title.toLowerCase().replace(/\s+/g, "");
-            //          console.log("nowPlaying", input);
-
-            //          if (input.indexOf("hdmi") === 0) {
-            //            input = input.substr(0, 5);
-            //          }
-            //        console.log("input", input, nowPlaying.title);
-            this.state = {
-            input: input.title.replace(/\/.*$/, '')
-            };
-            }
-            catch (e) {}
-            //          this.state = {
-            //            input: input
-            //          };
-            */
         }
       } catch (e) {
         debug(this.host, "poll exception", e);
@@ -290,20 +242,50 @@ class BraviaHost extends HostBase {
     }, 500);
   }
 
+  /**
+   * command - handle commands from MQTT
+   */
   async command(topic, command) {
-    debug("command", command);
+    console.log("command", command);
     if (command.startsWith("LAUNCH-")) {
       await this.launchApplication(command.substr(7));
-      //      await this.bravia.appControl.invoke("setActiveApp", "1.0", {
-      //        uri: command.substr(7)
-      //      });
-      //      debug(
-      //        this.host,
-      //        "getPlayingContentInfo",
-      //        await this.bravia.avContent.invoke("getPlayingContentInfo", "1.0")
-      //      );
-      //      Promise.resolve();
+      return;
     }
+
+    if (command === "SPEAKERS") {
+      try {
+        await this.post("audio", "setSoundSettings", [
+          {
+            settings: [
+              {
+                value: "speaker",
+                target: "outputTerminal"
+              }
+            ]
+          }
+        ]);
+      } catch (e) {
+        console.log("e", e);
+      }
+      return;
+    } else if (command === "AUDIOSYSTEM") {
+      try {
+        await this.post("audio", "setSoundSettings", [
+          {
+            settings: [
+              {
+                value: "audioSystem",
+                target: "outputTerminal"
+              }
+            ]
+          }
+        ]);
+      } catch (e) {
+        console.log("e", e);
+      }
+      return;
+    }
+
     command = command.toUpperCase();
     if (command === "POWERON") {
       this.commandQueue.push("WakeUp");
@@ -311,6 +293,7 @@ class BraviaHost extends HostBase {
       //      this.bravia.send("WakeUp");
       return;
     }
+
     const cmd = this.codesMap[command.toUpperCase()];
     if (cmd) {
       switch (cmd.toUpperCase().replace(" ", "")) {
@@ -332,7 +315,6 @@ class BraviaHost extends HostBase {
         this.commandRunner();
       }
 
-      //      return this.bravia.send(cmd);
     } else {
       console.log(this.host, "invalid command", command);
     }
@@ -350,7 +332,7 @@ function main() {
     console.log("ENV variable BRAVIA_HOSTS not found");
     process.exit(1);
   }
-  BRAVIA_HOSTS.forEach((host) => {
+  BRAVIA_HOSTS.forEach(host => {
     tvs[host] = new BraviaHost(host);
   });
 }
