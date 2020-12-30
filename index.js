@@ -142,8 +142,9 @@ class BraviaHost extends HostBase {
     if (ret.error) {
       this.state = { input: "HDMI 1" };
     } else {
+//      console.log(ret.result[0].title);
       this.state = {
-        input: ret.result[0].title.replace(/\/.*$/, "")
+        input: ret.result[0].title.replace(/\/.*$/, "").substr(0, 6)
       };
     }
   }
@@ -296,7 +297,7 @@ class BraviaHost extends HostBase {
 
     const cmd = this.codesMap[command.toUpperCase()];
     if (cmd) {
-      switch (cmd.toUpperCase().replace(" ", "")) {
+      switch (cmd.toUpperCase().replace(" ", "").substr(0, 5)) {
         case "HDMI1":
           this.state = { input: "HDMI 1" };
           break;
@@ -304,12 +305,14 @@ class BraviaHost extends HostBase {
           this.state = { input: "HDMI 1" };
           break;
         case "HDMI3":
+        case "HDMI3(EARC)":
           this.state = { input: "HDMI 3" };
           break;
         case "HDMI4":
           this.state = { input: "HDMI 3" };
           break;
       }
+      console.log("input:", this.state);
       this.commandQueue.push(cmd);
       if (this.commandQueue.length < 2) {
         this.commandRunner();
